@@ -8,6 +8,7 @@ import torchvision
 from torch.utils.data import DataLoader
 from torchvision.datasets.folder import make_dataset
 from torchvision import transforms as t
+from torchvision.transforms import v2
 
 
 def get_samples(root, extensions=(".mp4", ".avi")):
@@ -37,10 +38,10 @@ def get_samples(root, extensions=(".mp4", ".avi")):
 
 
 class RandomDataset(torch.utils.data.IterableDataset):
-    def __init__(self, root, epoch_size=None, frame_transform=None, video_transform=None, clip_len=16):
+    def __init__(self, root, epoch_size=None, frame_transform=None, video_transform=None, clip_len=16, split=(0,-1)):
         super(RandomDataset).__init__()
-
-        self.samples = get_samples(root)
+        start, end = split
+        self.samples = get_samples(root)[start:end]
 
         # Allow for temporal jittering
         if epoch_size is None:
@@ -48,8 +49,14 @@ class RandomDataset(torch.utils.data.IterableDataset):
         self.epoch_size = epoch_size
 
         self.clip_len = clip_len
-        self.frame_transform = frame_transform
-        self.video_transform = video_transform
+        if frame_transform is None:
+            self.frame_transform = v2.ToTensor()
+        else:
+            self.frame_transform = frame_transform
+        if video_transform is None:
+            self.video_transform = v2.ToTensor()
+        else:
+            self.video_transform = video_transform
 
     def __len__(self):
         return self.epoch_size
