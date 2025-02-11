@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="35745452-0362-4547-b465-26283c3fefa3" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/model_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -59,7 +58,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1739245386428</updated>
-      <workItem from="1739245387539" duration="7711000" />
+      <workItem from="1739245387539" duration="8681000" />
     </task>
     <servers />
   </component>
