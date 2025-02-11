@@ -71,7 +71,6 @@ class RandomDataset(torch.utils.data.IterableDataset):
             if self.video_transform:
                 video = self.video_transform(video)
             output = {
-                'path': path,
                 'video': video,
                 'target': target
             }
@@ -84,13 +83,4 @@ transforms = [t.Resize((224, 224))]
 frame_transform = t.Compose(transforms)
 
 dataset = RandomDataset("./dataset", epoch_size=None, frame_transform=frame_transform)
-
 loader = DataLoader(dataset, batch_size=12)
-data = {"video": [], 'start': [], 'end': [], 'tensorsize': []}
-for batch in loader:
-    for i in range(len(batch['path'])):
-        data['video'].append(batch['path'][i])
-        data['start'].append(batch['start'][i].item())
-        data['end'].append(batch['end'][i].item())
-        data['tensorsize'].append(batch['video'][i].size())
-print(data)
