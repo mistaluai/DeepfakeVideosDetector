@@ -1,5 +1,4 @@
 import torch
-from jsonschema.benchmarks.const_vs_enum import valid
 from tqdm import tqdm
 
 from training_utils import TrainingUtilities
@@ -24,7 +23,7 @@ class ModelTrainer:
         device = self.DEVICE
 
         training_epoch = 0
-
+        epoch = 0
         if self.is_continue:
 
             if verbose > 0:

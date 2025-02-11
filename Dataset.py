@@ -51,6 +51,9 @@ class RandomDataset(torch.utils.data.IterableDataset):
         self.frame_transform = frame_transform
         self.video_transform = video_transform
 
+    def __len__(self):
+        return self.epoch_size
+
     def __iter__(self):
         for i in range(self.epoch_size):
             # Get random sample
