@@ -50,7 +50,8 @@ class RandomDataset(torch.utils.data.IterableDataset):
 
         self.clip_len = clip_len
         if frame_transform is None:
-            self.frame_transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+            self.frame_transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True), v2.Resize(255),
+                                 v2.CenterCrop(224)])
         else:
             self.frame_transform = frame_transform
 
@@ -87,7 +88,7 @@ class RandomDataset(torch.utils.data.IterableDataset):
 
 
 ## Example
-transforms = [t.Resize((224, 224))]
+transforms = [v2.Resize((224, 224))]
 frame_transform = t.Compose(transforms)
 
 dataset = RandomDataset("./dataset", epoch_size=None, frame_transform=frame_transform)
