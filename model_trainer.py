@@ -17,11 +17,12 @@ class ModelTrainer:
         self.save_folder = save_folder
         self.is_continue = is_continue
         self.checkpoint = checkpoint
+        self.scaler = torch.amp.GradScaler()
 
     def train_model(self, verbose=0):
         model, optimizer, criterion, epochs, dataloaders = self.model, self.optimizer, self.criterion, self.epochs, self.dataloaders
         device = self.DEVICE
-
+        scaler = self.scaler
         training_epoch = 0
         epoch = 0
         if self.is_continue:
@@ -53,10 +54,13 @@ class ModelTrainer:
                         target = batch['target'].to(device)
 
                         optimizer.zero_grad()
-                        outputs = model(video)
-                        loss = criterion(outputs, target)
-                        loss.backward()
-                        optimizer.step()
+                        with torch.amp.autocast('cuda'):
+                            outputs = model(video)
+                            loss = criterion(outputs, target)
+
+                        scaler.scale(loss).backward()
+                        scaler.step(optimizer)
+                        scaler.update()
 
                         train_loss += loss.item()
                         _, predicted = torch.max(outputs, 1)
@@ -82,17 +86,18 @@ class ModelTrainer:
         total_test = 0
 
         with torch.no_grad():
-            for batch in tqdm(test_loader, desc="Testing"):
-                video = batch['video'].to(device)
-                target = batch['target'].to(device)
+            with torch.amp.autocast('cuda'):
+                for batch in tqdm(test_loader, desc="Testing"):
+                    video = batch['video'].to(device)
+                    target = batch['target'].to(device)
 
-                outputs = model(video)
-                loss = criterion(outputs, target)
-                test_loss += loss.item()
+                    outputs = model(video)
+                    loss = criterion(outputs, target)
+                    test_loss += loss.item()
 
-                _, predicted = torch.max(outputs, 1)
-                correct_test += (predicted == target).sum().item()
-                total_test += target.size(0)
+                    _, predicted = torch.max(outputs, 1)
+                    correct_test += (predicted == target).sum().item()
+                    total_test += target.size(0)
 
         avg_test_loss = test_loss / len(test_loader)
         test_accuracy = correct_test / total_test
@@ -106,17 +111,18 @@ class ModelTrainer:
         correct_val = 0
         total_val = 0
         with torch.no_grad():
-            for batch in tqdm(val_loader, desc=f"Epoch {epoch + 1}/5 - Validation"):
-                video = batch['video'].to(device)
-                target = batch['target'].to(device)
+            with torch.amp.autocast('cuda'):
+                for batch in tqdm(val_loader, desc=f"Epoch {epoch + 1}/5 - Validation"):
+                    video = batch['video'].to(device)
+                    target = batch['target'].to(device)
 
-                outputs = model(video)
-                loss = criterion(outputs, target)
-                val_loss += loss.item()
+                    outputs = model(video)
+                    loss = criterion(outputs, target)
+                    val_loss += loss.item()
 
-                _, predicted = torch.max(outputs, 1)
-                correct_val += (predicted == target).sum().item()
-                total_val += target.size(0)
+                    _, predicted = torch.max(outputs, 1)
+                    correct_val += (predicted == target).sum().item()
+                    total_val += target.size(0)
         val_accuracy = correct_val / total_val
         avg_val_loss = val_loss / len(val_loader)
         return avg_val_loss, val_accuracy
