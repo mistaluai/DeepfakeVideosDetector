@@ -50,13 +50,11 @@ class RandomDataset(torch.utils.data.IterableDataset):
 
         self.clip_len = clip_len
         if frame_transform is None:
-            self.frame_transform = v2.ToTensor()
+            self.frame_transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
         else:
             self.frame_transform = frame_transform
-        if video_transform is None:
-            self.video_transform = v2.ToTensor()
-        else:
-            self.video_transform = video_transform
+
+        self.video_transform = video_transform
 
     def __len__(self):
         return self.epoch_size
