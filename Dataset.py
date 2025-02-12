@@ -60,6 +60,18 @@ class RandomDataset(torch.utils.data.IterableDataset):
     def __len__(self):
         return self.epoch_size
 
+    def __pad_video(self, video_frames):
+        """Prepad video frames to match clip length."""
+        n = len(video_frames)
+        if n == self.clip_len:
+            return video_frames
+
+        # Create zero frames
+        pad_tensor = torch.zeros_like(video_frames[0])
+        pad_frames = [pad_tensor] * (self.clip_len - n)  # List of zero frames
+
+        return pad_frames + video_frames  # Prepadding at the beginning
+
     def __iter__(self):
         for i in range(self.epoch_size):
             # Get random sample
@@ -69,12 +81,9 @@ class RandomDataset(torch.utils.data.IterableDataset):
             metadata = vid.get_metadata()
             video_frames = []  # video frame buffer
 
-            # Seek and return frames
-            max_seek = metadata["video"]['duration'][0] - (self.clip_len / metadata["video"]['fps'][0])
-            start = random.uniform(0., max_seek)
-            for frame in itertools.islice(vid.seek(start), self.clip_len):
+            for frame in itertools.islice(vid, self.clip_len):
                 video_frames.append(self.frame_transform(frame['data']))
-                current_pts = frame['pts']
+            video_frames = self.__pad_video(video_frames)
             # Stack it into a tensor
             video = torch.stack(video_frames, 0)
             if self.video_transform:
