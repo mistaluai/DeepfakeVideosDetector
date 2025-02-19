@@ -1,8 +1,7 @@
 import torch
-from tqdm import tqdm
 
 from training_utils import TrainingUtilities
-
+import time
 
 class ModelTrainer:
     def __init__(self, model, optimizer, scheduled, criterion, epochs, dataloaders, device, save_folder,
@@ -33,7 +32,7 @@ class ModelTrainer:
             epoch, model, optimizer = TrainingUtilities.load_checkpoint(model, optimizer, self.checkpoint, self.scheduled, verbose)
 
         for training_epoch in range(epoch, epochs):
-
+            print(f"\nTraining epoch {training_epoch}")
             train_losses = []
             val_losses = []
             val_accuracies = []
@@ -41,15 +40,18 @@ class ModelTrainer:
             avg_val_loss = 0
             val_accuracy = 0
             train_accuracy = 0
-
+            train_time = 0
+            val_time = 0
             for phase in ['train', 'val']:
                 if phase == 'train':
+                    start_time = time.time()
+                    print("Training phase.....")
                     train_loader = dataloaders['train']
                     model.train()
                     train_loss = 0
                     correct_train = 0
                     total_train = 0
-                    for batch in tqdm(train_loader, desc=f"Epoch {training_epoch + 1}/5 - Training"):
+                    for batch in train_loader:
                         video = batch['video'].to(device)  # (Batch, Frames, C, H, W)
                         target = batch['target'].to(device)
 
@@ -69,12 +71,22 @@ class ModelTrainer:
 
                     avg_train_loss = train_loss / len(train_loader)
                     train_accuracy = correct_train / total_train
+                    end_time = time.time()
+                    train_time = end_time - start_time
+                    formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(train_time))
+                    print(f"Training completed in {formatted_time}")
                 else:
+                    print("Validation phase.....")
                     val_loader = dataloaders['val']
+                    start_time = time.time()
                     avg_val_loss, val_accuracy = self.evaluate(val_loader, training_epoch)
+                    end_time = time.time()
+                    val_time = end_time - start_time
+                    formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(val_time))
+                    print(f"Validation completed in {formatted_time}")
 
             print(
-                f"Epoch [{epoch + 1}/5], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {avg_val_loss:.4f}, Val Acc: {val_accuracy:.4f}")        #Test model
+                f"Epoch [{epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {avg_val_loss:.4f}, Val Acc: {val_accuracy:.4f}")        #Test model
         self.test(dataloaders['test'])
 
     def test(self, test_loader):
@@ -87,7 +99,7 @@ class ModelTrainer:
 
         with torch.no_grad():
             with torch.amp.autocast('cuda'):
-                for batch in tqdm(test_loader, desc="Testing"):
+                for batch in test_loader:
                     video = batch['video'].to(device)
                     target = batch['target'].to(device)
 
@@ -112,7 +124,7 @@ class ModelTrainer:
         total_val = 0
         with torch.no_grad():
             with torch.amp.autocast('cuda'):
-                for batch in tqdm(val_loader, desc=f"Epoch {epoch + 1}/5 - Validation"):
+                for batch in val_loader:
                     video = batch['video'].to(device)
                     target = batch['target'].to(device)
 
