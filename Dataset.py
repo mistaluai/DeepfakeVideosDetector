@@ -11,12 +11,13 @@ from torchvision import transforms as t
 from torchvision.transforms import v2
 import numpy as np
 
+
 def get_samples(root, extensions=(".mp4", ".avi")):
     samples = []
 
     # Define class labels
     class_to_idx = {
-        "DFD_original_sequences": 0,  # Real videos
+        "DFD_original sequences": 0,  # Real videos
         "DFD_manipulated_sequences": 1  # Deepfake videos
     }
 
@@ -36,31 +37,33 @@ def get_samples(root, extensions=(".mp4", ".avi")):
 
     return samples
 
+
 def set_seed(seed=None, seed_torch=True):
-  """
-  Function that controls randomness. NumPy and random modules must be imported.
+    """
+    Function that controls randomness. NumPy and random modules must be imported.
 
-  Args:
-    seed : Integer
-      A non-negative integer that defines the random state. Default is `None`.
-    seed_torch : Boolean
-      If `True` sets the random seed for pytorch tensors, so pytorch module
-      must be imported. Default is `True`.
+    Args:
+      seed : Integer
+        A non-negative integer that defines the random state. Default is `None`.
+      seed_torch : Boolean
+        If `True` sets the random seed for pytorch tensors, so pytorch module
+        must be imported. Default is `True`.
 
-  Returns:
-    Nothing.
-  """
-  if seed is None:
-    seed = np.random.choice(2 ** 32)
-  random.seed(seed)
-  np.random.seed(seed)
-  if seed_torch:
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-  print(f'Random seed {seed} has been set.')
+    Returns:
+      Nothing.
+    """
+    if seed is None:
+        seed = np.random.choice(2 ** 32)
+    random.seed(seed)
+    np.random.seed(seed)
+    if seed_torch:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    print(f'Random seed {seed} has been set.')
+
 
 def get_datasets(root, splits, epoch_size=None, frame_transform=None, video_transform=None, clip_len=16, seed=2024):
     train_split = splits[0]
@@ -68,6 +71,8 @@ def get_datasets(root, splits, epoch_size=None, frame_transform=None, video_tran
     test_split = splits[2]
 
     samples = get_samples(root)
+    print(samples[0])
+    print(samples[-1])
 
     set_seed(seed, seed_torch=True)
     random.shuffle(samples)
@@ -79,12 +84,14 @@ def get_datasets(root, splits, epoch_size=None, frame_transform=None, video_tran
     start, end = test_split
     test_samples = samples[start:end]
 
-    train_dataset = VideosDataset(train_samples, frame_transform=frame_transform, video_transform=video_transform, clip_len=clip_len)
-    val_dataset = VideosDataset(val_samples, frame_transform=frame_transform, video_transform=video_transform, clip_len=clip_len)
-    test_dataset = VideosDataset(test_samples, frame_transform=frame_transform, video_transform=video_transform, clip_len=clip_len)
+    train_dataset = VideosDataset(train_samples, frame_transform=frame_transform, video_transform=video_transform,
+                                  clip_len=clip_len)
+    val_dataset = VideosDataset(val_samples, frame_transform=frame_transform, video_transform=video_transform,
+                                clip_len=clip_len)
+    test_dataset = VideosDataset(test_samples, frame_transform=frame_transform, video_transform=video_transform,
+                                 clip_len=clip_len)
 
     return train_dataset, val_dataset, test_dataset
-
 
 
 class VideosDataset(torch.utils.data.IterableDataset):
@@ -100,7 +107,7 @@ class VideosDataset(torch.utils.data.IterableDataset):
         self.clip_len = clip_len
         if frame_transform is None:
             self.frame_transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True), v2.Resize(255),
-                                 v2.CenterCrop(224)])
+                                               v2.CenterCrop(224)])
         else:
             self.frame_transform = frame_transform
 
@@ -142,7 +149,6 @@ class VideosDataset(torch.utils.data.IterableDataset):
                 'target': target
             }
             yield output
-
 
 
 ## Example
