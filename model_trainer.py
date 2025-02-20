@@ -34,10 +34,15 @@ class ModelTrainer:
             epoch, model, optimizer = TrainingUtilities.load_checkpoint(model, optimizer, self.checkpoint, self.scheduled, verbose)
 
         for training_epoch in range(epoch, epochs):
-            print(f"\nTraining epoch {training_epoch}")
+            print(f"\nTraining epoch {training_epoch+1}")
             train_losses = []
             val_losses = []
+            test_losses = []
+
             val_accuracies = []
+            train_accuracies = []
+            test_accuracies = []
+
             avg_train_loss = 0
             avg_val_loss = 0
             val_accuracy = 0
@@ -48,7 +53,7 @@ class ModelTrainer:
             for phase in ['train', 'val']:
                 if phase == 'train':
                     start_time = time.time()
-                    print("Training phase.....")
+                    # print("Training phase.....")
                     train_loader = dataloaders['train']
                     model.train()
                     train_loss = 0
@@ -79,7 +84,7 @@ class ModelTrainer:
                     formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(train_time))
                     print(f"Training completed in {formatted_time}")
                 else:
-                    print("Validation phase.....")
+                    # print("Validation phase.....")
                     val_loader = dataloaders['val']
                     start_time = time.time()
                     avg_val_loss, val_accuracy, val_f1 = self.evaluate(val_loader, training_epoch)
@@ -87,14 +92,26 @@ class ModelTrainer:
                     val_time = end_time - start_time
                     formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(val_time))
                     print(f"Validation completed in {formatted_time}")
-
+            train_losses.append(avg_train_loss)
+            val_losses.append(avg_val_loss)
+            train_accuracies.append(train_accuracy)
+            val_accuracies.append(val_accuracy)
             print(
-                f"Epoch [{epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
+                f"Epoch [{training_epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
                 f"Val Loss: {avg_val_loss:.4f}, Val Acc: {val_accuracy:.4f}, Val F1: {val_f1:.4f}"
             )
-            self.test(dataloaders['test'])
+            start_time = time.time()
+            avg_test_loss, test_accuracy = self.test(dataloaders['test'], training_epoch+1)
+            end_time = time.time()
+            test_time = end_time - start_time
+            formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(test_time))
+            print(f"Testing completed in {formatted_time}")
+            test_losses.append(avg_test_loss)
+            test_accuracies.append(test_accuracy)
 
-    def test(self, test_loader):
+            return train_losses, val_losses, test_losses, train_accuracies, val_accuracies, test_accuracies
+
+    def test(self, test_loader, epoch):
         model, criterion, device = self.model, self.criterion, self.DEVICE
         model.eval()
         test_loss = 0
@@ -125,7 +142,8 @@ class ModelTrainer:
         test_f1 = f1_score(y_true, y_pred, average='weighted')
 
         print(f"Test Loss: {avg_test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test F1 Score: {test_f1:.4f}")
-        TrainingUtilities.save_model(model, 'final_', self.save_folder)
+        TrainingUtilities.save_model(model, f'model_epoch{epoch}-acc{test_accuracy:.2f}', self.save_folder)
+        return avg_test_loss, test_accuracy
 
     def evaluate(self, val_loader, epoch, verbose=0):
         model, criterion, device = self.model, self.criterion, self.DEVICE
