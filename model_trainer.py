@@ -2,6 +2,8 @@ import torch
 
 from training_utils import TrainingUtilities
 import time
+from sklearn.metrics import f1_score
+
 
 class ModelTrainer:
     def __init__(self, model, optimizer, scheduled, criterion, epochs, dataloaders, device, save_folder,
@@ -42,6 +44,7 @@ class ModelTrainer:
             train_accuracy = 0
             train_time = 0
             val_time = 0
+            val_f1 = 0
             for phase in ['train', 'val']:
                 if phase == 'train':
                     start_time = time.time()
@@ -79,23 +82,25 @@ class ModelTrainer:
                     print("Validation phase.....")
                     val_loader = dataloaders['val']
                     start_time = time.time()
-                    avg_val_loss, val_accuracy = self.evaluate(val_loader, training_epoch)
+                    avg_val_loss, val_accuracy, val_f1 = self.evaluate(val_loader, training_epoch)
                     end_time = time.time()
                     val_time = end_time - start_time
                     formatted_time = time.strftime("%Mmins %Ssecs", time.gmtime(val_time))
                     print(f"Validation completed in {formatted_time}")
 
             print(
-                f"Epoch [{epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {avg_val_loss:.4f}, Val Acc: {val_accuracy:.4f}")        #Test model
-        self.test(dataloaders['test'])
+                f"Epoch [{epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Train Acc: {train_accuracy:.4f}, "
+                f"Val Loss: {avg_val_loss:.4f}, Val Acc: {val_accuracy:.4f}, Val F1: {val_f1:.4f}"
+            )
+            self.test(dataloaders['test'])
 
     def test(self, test_loader):
-        model, criterion,  device = self.model, self.criterion, self.DEVICE
+        model, criterion, device = self.model, self.criterion, self.DEVICE
         model.eval()
         test_loss = 0
-
         correct_test = 0
         total_test = 0
+        y_true, y_pred = [], []
 
         with torch.no_grad():
             with torch.amp.autocast('cuda'):
@@ -111,17 +116,25 @@ class ModelTrainer:
                     correct_test += (predicted == target).sum().item()
                     total_test += target.size(0)
 
+                    # Store predictions and true labels for F1-score
+                    y_true.extend(target.cpu().numpy())
+                    y_pred.extend(predicted.cpu().numpy())
+
         avg_test_loss = test_loss / len(test_loader)
         test_accuracy = correct_test / total_test
-        print(f"Test Loss: {avg_test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
-        TrainingUtilities.save_model(model,'final_', self.save_folder)
+        test_f1 = f1_score(y_true, y_pred, average='weighted')
 
-    def evaluate(self,val_loader,epoch, verbose=0):
+        print(f"Test Loss: {avg_test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test F1 Score: {test_f1:.4f}")
+        TrainingUtilities.save_model(model, 'final_', self.save_folder)
+
+    def evaluate(self, val_loader, epoch, verbose=0):
         model, criterion, device = self.model, self.criterion, self.DEVICE
         model.eval()
         val_loss = 0
         correct_val = 0
         total_val = 0
+        y_true, y_pred = [], []
+
         with torch.no_grad():
             with torch.amp.autocast('cuda'):
                 for batch in val_loader:
@@ -135,6 +148,14 @@ class ModelTrainer:
                     _, predicted = torch.max(outputs, 1)
                     correct_val += (predicted == target).sum().item()
                     total_val += target.size(0)
+
+                    # Store predictions and true labels for F1-score
+                    y_true.extend(target.cpu().numpy())
+                    y_pred.extend(predicted.cpu().numpy())
+
         val_accuracy = correct_val / total_val
         avg_val_loss = val_loss / len(val_loader)
-        return avg_val_loss, val_accuracy
+        val_f1 = f1_score(y_true, y_pred, average='weighted')
+
+        return avg_val_loss, val_accuracy, val_f1
+
