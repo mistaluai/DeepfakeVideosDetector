@@ -33,15 +33,17 @@ class ModelTrainer:
 
             epoch, model, optimizer = TrainingUtilities.load_checkpoint(model, optimizer, self.checkpoint, self.scheduled, verbose)
 
+        train_losses = []
+        val_losses = []
+        test_losses = []
+
+        val_accuracies = []
+        train_accuracies = []
+        test_accuracies = []
+
         for training_epoch in range(epoch, epochs):
             print(f"\nTraining epoch {training_epoch+1}")
-            train_losses = []
-            val_losses = []
-            test_losses = []
 
-            val_accuracies = []
-            train_accuracies = []
-            test_accuracies = []
 
             avg_train_loss = 0
             avg_val_loss = 0
@@ -109,7 +111,7 @@ class ModelTrainer:
             test_losses.append(avg_test_loss)
             test_accuracies.append(test_accuracy)
 
-            return train_losses, val_losses, test_losses, train_accuracies, val_accuracies, test_accuracies
+        return train_losses, val_losses, test_losses, train_accuracies, val_accuracies, test_accuracies
 
     def test(self, test_loader, epoch):
         model, criterion, device = self.model, self.criterion, self.DEVICE
