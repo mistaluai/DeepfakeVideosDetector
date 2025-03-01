@@ -13,7 +13,8 @@ import numpy as np
 
 
 def get_samples(root, extensions=(".mp4", ".avi")):
-    samples = []
+    real_samples = []
+    fake_samples = []
 
     # Define class labels
     class_to_idx = {
@@ -33,9 +34,11 @@ def get_samples(root, extensions=(".mp4", ".avi")):
         for filename in os.listdir(class_dir):
             if filename.endswith(extensions):
                 file_path = os.path.join(class_dir, filename)
-                samples.append((file_path, label))
+                if label == 1:
+                    fake_samples.append((file_path, label))
+                else: real_samples.append((file_path, label))
 
-    return samples
+    return fake_samples, real_samples
 
 
 def set_seed(seed=None, seed_torch=True):
@@ -65,26 +68,60 @@ def set_seed(seed=None, seed_torch=True):
     print(f'Random seed {seed} has been set.')
 
 
-def get_datasets(root, splits, epoch_size=None, frame_transform=None, video_transform=None, clip_len=16, seed=2024):
+def get_datasets(root, splits,sample_size=1, epoch_size=None, train_frame_transform=None, train_video_transform=None, frame_transform=None, video_transform=None, clip_len=16, seed=2024):
     train_split = splits[0]
     val_split = splits[1]
-    test_split = splits[2]
 
-    samples = get_samples(root)
-    print(samples[0])
-    print(samples[-1])
+    # Get samples
+    fake_samples, real_samples = get_samples(root)
 
+    #shuffle samples
     set_seed(seed, seed_torch=True)
-    random.shuffle(samples)
+    random.shuffle(fake_samples)
+    random.shuffle(real_samples)
 
-    start, end = train_split
-    train_samples = samples[start:end]
-    start, end = val_split
-    val_samples = samples[start:end]
-    start, end = test_split
-    test_samples = samples[start:end]
+    #sample from the samples for prototyping
+    fake_samples = fake_samples[:int(sample_size*len(fake_samples))]
+    real_samples = real_samples[:int(sample_size*len(real_samples))]
 
-    train_dataset = VideosDataset(train_samples, frame_transform=frame_transform, video_transform=video_transform,
+    # get number of samples to calculate the splits
+    n_fake_samples = len(fake_samples)
+    n_real_samples = len(real_samples)
+
+    # calculate the number of samples in each split
+    train_fake_samples = int(n_fake_samples * train_split)
+    val_fake_samples = int(n_fake_samples * val_split / 2)
+    test_fake_samples = n_fake_samples - train_fake_samples - val_fake_samples
+
+    train_real_samples = int(n_real_samples * train_split)
+    val_real_samples = int(n_real_samples * val_split / 2)
+    test_real_samples = n_real_samples - train_real_samples - val_real_samples
+
+
+    #split train
+    train_fake = fake_samples[:train_fake_samples]
+    train_real = real_samples[:train_real_samples]
+    print(f'Train fake samples: {len(train_fake)}, train real samples: {len(train_real)}')
+    train_samples = train_fake + train_real
+    random.shuffle(train_samples)
+
+    #split val
+    val_fake = fake_samples[train_fake_samples:train_fake_samples + val_fake_samples]
+    val_real = real_samples[train_real_samples:train_real_samples + val_real_samples]
+    print(f'Val fake samples: {len(val_fake)}, val real samples: {len(val_real)}')
+    val_samples = val_fake + val_real
+    random.shuffle(val_samples)
+
+    #split test
+    test_fake = fake_samples[train_fake_samples + val_fake_samples:]
+    test_real = real_samples[train_real_samples+val_real_samples:]
+    print(f'Test fake samples: {len(test_fake)}, test real samples: {len(test_real)}')
+    test_samples = test_fake + test_real
+    random.shuffle(test_samples)
+
+
+    #create datasets
+    train_dataset = VideosDataset(train_samples, frame_transform=train_frame_transform, video_transform=train_video_transform,
                                   clip_len=clip_len)
     val_dataset = VideosDataset(val_samples, frame_transform=frame_transform, video_transform=video_transform,
                                 clip_len=clip_len)
