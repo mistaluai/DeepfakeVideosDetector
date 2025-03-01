@@ -8,6 +8,7 @@ class Loss(nn.Module):
         self.real_weight = num_samples / (2 * class_real)
         self.fake_weight = num_samples / (2 * class_fake)
         weights = torch.tensor([self.real_weight, self.fake_weight], dtype=torch.float)
+        print(f'class weights: {weights}')
         self.loss = nn.CrossEntropyLoss(weight=weights)
 
     def forward(self, outputs, target):
